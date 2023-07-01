@@ -92,6 +92,11 @@ class DictReader:
         self.dialect = dialect
         self.line_num = 0
 
+    def __repr__(self):
+        classname = self.__class__.__name__
+        # TODO continue building the __repr__ string
+        return classname + '()'
+
     def __iter__(self):
         return self
 
