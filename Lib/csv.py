@@ -83,6 +83,7 @@ register_dialect("unix", unix_dialect)
 class DictReader:
     def __init__(self, f, fieldnames=None, restkey=None, restval=None,
                  dialect="excel", *args, **kwds):
+        self.f = f
         if fieldnames is not None and iter(fieldnames) is fieldnames:
             fieldnames = list(fieldnames)
         self._fieldnames = fieldnames   # list of keys for the dict
@@ -94,8 +95,29 @@ class DictReader:
 
     def __repr__(self):
         classname = self.__class__.__name__
+        try:
+            paramlist = [f'<{self.f.__class__.__name__} name = {self.f.name!r}>']
+        except AttributeError:
+            paramlist= [f'<{self.f.__class__.__name__}>']
+
+        if self._fieldnames:
+            paramlist.append(f'fieldnames = {self._fieldnames}')
+
+        if self.restkey:
+            paramlist.append(f'restkey = {self.restkey!r}')
+
+        if self.restval:
+            paramlist.append(f'restval = {self.restval!r}')
+
+        if self.dialect != 'excel':
+            paramlist.append(f'dialect = {self.dialect!r}')
+
+        if paramlist:
+            params = ', '.join(paramlist)
+
         # TODO continue building the __repr__ string
-        return classname + '()'
+        # figure out the *args and **kwds part
+        return classname + f'({params})'
 
     def __iter__(self):
         return self
