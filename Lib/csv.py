@@ -83,9 +83,10 @@ register_dialect("unix", unix_dialect)
 class DictReader:
     def __init__(self, f, fieldnames=None, restkey=None, restval=None,
                  dialect="excel", *args, **kwds):
-        self.f = f
+        self._f = f  # handle to the f parameter
         if fieldnames is not None and iter(fieldnames) is fieldnames:
             fieldnames = list(fieldnames)
+        self._fn = fieldnames           # remember if fieldnames was passed
         self._fieldnames = fieldnames   # list of keys for the dict
         self.restkey = restkey          # key to catch long rows
         self.restval = restval          # default value for short rows
@@ -96,12 +97,16 @@ class DictReader:
     def __repr__(self):
         classname = self.__class__.__name__
         try:
-            paramlist = [f'<{self.f.__class__.__name__} name = {self.f.name!r}>']
+            paramlist = [f'<{self._f.__class__.__name__} ' +
+                         f'name = {self._f.name!r}>']
         except AttributeError:
-            paramlist= [f'<{self.f.__class__.__name__}>']
+            paramlist = [f'<{self._f.__class__.__name__}>']
 
-        if self._fieldnames:
-            paramlist.append(f'fieldnames = {self._fieldnames}')
+        # Did not use the self._fieldnames attribute because it is updated
+        # with the first line of the csv file when next(self) is called,
+        # defined the self._fn attribute that is set on init and not modified.
+        if self._fn:
+            paramlist.append(f'fieldnames = {self._fn}')
 
         if self.restkey:
             paramlist.append(f'restkey = {self.restkey!r}')
@@ -109,14 +114,51 @@ class DictReader:
         if self.restval:
             paramlist.append(f'restval = {self.restval!r}')
 
+        # TODO handle if a dialect object was passed to the writer instead of
+        # a string representing a registered dialect.
         if self.dialect != 'excel':
             paramlist.append(f'dialect = {self.dialect!r}')
+
+        d = get_dialect(self.dialect)
+
+        # Check if any *args or **kwds were passed that override the dialect
+        # and return those in the __repr__ string.
+        sd = self.reader.dialect
+        if d != sd:
+            if d.delimiter != sd.delimiter:
+                paramlist.append(f'delimiter = {sd.delimiter!r}')
+
+            if d.quotechar != sd.quotechar:
+                paramlist.append(f'quotechar = {sd.quotechar!r}')
+
+            if d.escapechar != sd.escapechar:
+                paramlist.append(f'escapechar = {sd.escapechar!r}')
+
+            if d.doublequote != sd.doublequote:
+                paramlist.append(f'doublequote = {sd.doublequote}')
+
+            if d.skipinitialspace != sd.skipinitialspace:
+                paramlist.append(f'skipinitialspace = {sd.skipinitialspace}')
+
+            if d.quoting != sd.quoting:
+                if sd.quoting == QUOTE_MINIMAL:
+                    q = 'csv.QUOTE_MINIMAL'
+                elif sd.quoting == QUOTE_ALL:
+                    q = 'csv.QUOTE_ALL'
+                elif sd.quoting == QUOTE_NONNUMERIC:
+                    q = 'csv.QUOTE_NONNUMERIC'
+                elif sd.quoting == QUOTE_NONE:
+                    q = 'csv.QUOTE_NONE'
+                elif sd.quoting == QUOTE_STRINGS:
+                    q = 'csv.QUOTE_STRINGS'
+                elif sd.quoting == QUOTE_NOTNULL:
+                    q = 'csv.QUOTE_NOTNULL'
+
+                paramlist.append(f'quoting = {q}')
 
         if paramlist:
             params = ', '.join(paramlist)
 
-        # TODO continue building the __repr__ string
-        # figure out the *args and **kwds part
         return classname + f'({params})'
 
     def __iter__(self):
